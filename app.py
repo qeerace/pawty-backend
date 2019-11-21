@@ -19,6 +19,7 @@ app.config.from_object(os.environ['APP_SETTINGS'])
 app.config['JSON_SORT_KEYS'] = False
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 
+# Keep pictures in Google Cloud Storage
 CLOUD_STORAGE_BUCKET = app.config['CLOUD_STORAGE_BUCKET']
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = app.config['GOOGLE_APPLICATION_CREDENTIALS']
 APP_PORT = app.config['APP_PORT']
@@ -38,12 +39,15 @@ def lost_found():
     try:
         PAGE_SIZE = 20
 
+        # Filter by post type
         post_type = request.args.get('post_type')
         post_type = post_type.strip().split(",") if post_type != None and (',' in post_type or len(post_type) > 0) else []
 
+        # Filter by gender
         gender = request.args.get('gender')
         gender = gender.strip().split(",") if gender != None and (',' in gender or len(gender) > 0) else []
 
+        # Filter by province
         province = request.args.get('province')
         province = province.strip().split(",") if province != None and (',' in province or len(province) > 0) else []
 
@@ -64,7 +68,7 @@ def lost_found():
             query = query.filter(Posts.gender.in_(gender))
         if len(province) > 0:
             query = query.filter(Posts.province.in_(province))
-
+            
         total_count = query.count()
         page_count = math.ceil(total_count / PAGE_SIZE)
         page_count = 1 if page_count == 0 else page_count
@@ -180,6 +184,51 @@ def pet_detail(pet_id):
             is_owner = True
         response = post.detail()
         response.update(is_owner = is_owner)
+        return jsonify(response), 200
+    except Exception as e:
+        logging.exception(e)
+        return "Internal server error", 500
+    
+@app.route('/my_post/<uid>')
+def my_post(uid):
+    try:
+        auth_token = request.headers.get('Authorization')
+        firebase_uid = ""
+        if auth_token:
+            id_token = auth_token.split(" ")[1]
+            decoded_token = auth.verify_id_token(id_token)
+            firebase_uid = decoded_token['uid']
+        else:
+            return "Auth invalid", 400
+        PAGE_SIZE = 20
+
+        user_uid = request.args.get(uid)
+        user_uid = user_uid.strip().split(",") if user_uid != None and (',' in user_uid or len(user_uid) > 0) else []
+
+        page = request.args.get('page')
+        page = 1 if page == None else int(page)
+
+        query = Posts.query.filter(Posts.user_uid == uid)
+
+        if len(user_uid) > 0:
+            query = query.filter(Posts.user_uid.in_(user_uid))   
+
+        total_count = query.count()
+        page_count = math.ceil(total_count / PAGE_SIZE)
+        page_count = 1 if page_count == 0 else page_count
+
+        if page > page_count or page < 1:
+            return 'page not found', 404
+
+        offset = page_count*(page-1)
+        records = query.order_by(Posts.created_at.desc())[offset:PAGE_SIZE]
+        response = {
+            'records': [e.card() for e in records],
+            "page": page,
+            "per_page": PAGE_SIZE,
+            "page_count": page_count,
+            "total_count": total_count
+        }
         return jsonify(response), 200
     except Exception as e:
         logging.exception(e)

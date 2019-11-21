@@ -28,6 +28,7 @@ class Posts(db.Model):
     def __repr__(self):
         return '<id {}>'.format(self.id)
 
+# All data in Database
     def detail(self):
         return {
             'id': self.id,
@@ -52,10 +53,13 @@ class Posts(db.Model):
             'created_at': self.format_date(self.created_at)
         }
 
+# Data show only on card (short info.)
     def card(self):
         return {
             'id': self.id,
+            'user_uid':self.user_uid,
             'post_type': self.post_type,
+            'is_found': self.is_found,
             'topic': self.topic,
             'pic_url': self.pic_url,
             'gender': self.gender,
@@ -64,6 +68,7 @@ class Posts(db.Model):
             'missing_found_date': self.format_date(self.missing_found_date)
         }
 
+# Date format
     def format_date(self,date):
         return date.strftime("%d/%m/%Y")
 
