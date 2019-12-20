@@ -69,21 +69,10 @@ def lost_found():
         if len(province) > 0:
             query = query.filter(Posts.province.in_(province))
             
-        total_count = query.count()
-        page_count = math.ceil(total_count / PAGE_SIZE)
-        page_count = 1 if page_count == 0 else page_count
 
-        if page > page_count or page < 1:
-            return 'page not found', 404
-
-        offset = page_count*(page-1)
-        records = query.order_by(Posts.created_at.desc())[offset:PAGE_SIZE]
+        records = query.order_by(Posts.created_at.desc())
         response = {
-            'records': [e.card() for e in records],
-            "page": page,
-            "per_page": PAGE_SIZE,
-            "page_count": page_count,
-            "total_count": total_count
+            'records': [e.card() for e in records]
         }
         return jsonify(response), 200
     except Exception as e:
@@ -117,7 +106,7 @@ def add_pet():
         if len(req_fields) != 0:
             return 'Required fields is missing', 400
 
-        if (form['post_type'] not in ['Lost', 'Found']) or (form['size'] not in ["1", "2", "3"]):
+        if (form['post_type'] not in ['Lost', 'Found']):
             return 'The request is invalid', 400
 
         # pic upload

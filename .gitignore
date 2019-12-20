@@ -3,3 +3,4 @@ config.py
 .env
 /migrations
 /__pycache__
+/y
